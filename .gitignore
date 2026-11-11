@@ -1,0 +1,19 @@
+# ไม่เก็บใน Git (ใหญ่เกิน / สร้างใหม่ได้)
+.venv/
+datasets/
+runs/
+results/
+pi-results/
+__pycache__/
+*.pyc
+*.zip
+*.cache
+
+# โมเดลตั้งต้นของ Ultralytics (ดาวน์โหลดใหม่ได้อัตโนมัติ)
+yolo26n*.pt
+yolo11n*.pt
+
+# ไฟล์ระบบ
+.vscode/
+Thumbs.db
+desktop.ini

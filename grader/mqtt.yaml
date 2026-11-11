@@ -1,0 +1,28 @@
+# mqtt.yaml — ตั้งค่าการส่งผลไป server (ตามสเปกทีม server)
+enabled: true
+
+# ===== broker =====
+# ค่าย (สเปกทีม server): host 10.80.1.2 · port 1883 · ไม่มี user/password · ไม่ใช้ TLS
+# ทดสอบที่บ้านด้วย Mosquitto บน Pi: host localhost
+# ⚠️ ก่อนใช้งานในค่าย เปลี่ยน host เป็น 10.80.1.2
+host: localhost
+port: 1883
+username: null
+password: null
+tls: false
+
+# ===== ข้อความ =====
+topic: coffee/{lot_id}/ai_results   # {lot_id} ถูกแทนด้วยรหัสล็อต เช่น coffee/LOT01/ai_results
+qos: 1                              # 1 = ยืนยันว่า broker ได้รับ
+client_id: tesa-pi-grader
+timeout_s: 5
+
+# ชื่อคลาสของเรา → ชื่อฟิลด์ที่ server ต้องการ (เรียงตามสเปก)
+field_map:
+  good: good
+  shell: shell
+  full_black: full_black
+  broken: broken
+  parchment: parchment
+  husk: hull_husk
+  immature: immature

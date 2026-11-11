@@ -1,0 +1,27 @@
+# grading.yaml — เกณฑ์คำนวณเกรดเมล็ดกาแฟ (แก้ไฟล์นี้ไฟล์เดียวเมื่อเกณฑ์เปลี่ยน)
+# อ้างอิงระบบ full defect ของ SCA / CQI (Fine Robusta) ดูรายละเอียดในหน้า Notion "งานเพิ่มเติม"
+
+rule_name: sca-abc-v1          # ชื่อเวอร์ชันเกณฑ์ ส่งไปกับผลทุกครั้ง
+
+good_class: good               # ชื่อคลาสเมล็ดดี
+
+# คลาสเสีย: category = หมวดตาม SCA · per_full_defect = กี่เม็ดนับเป็น 1 full defect
+defects:
+  full_black: {category: 1, per_full_defect: 1}
+  husk:       {category: 2, per_full_defect: 5}   # ถ้าผู้จัดหมายถึง dried cherry ให้เปลี่ยนเป็น category 1, per_full_defect 1
+  shell:      {category: 2, per_full_defect: 5}
+  broken:     {category: 2, per_full_defect: 5}
+  parchment:  {category: 2, per_full_defect: 5}
+  immature:   {category: 2, per_full_defect: 5}
+
+# จำนวนเมล็ดโรบัสต้าในตัวอย่าง 350 g (~16.2 g ต่อ 100 เมล็ด)
+beans_per_350g: 2160
+
+# เส้นแบ่งเกรด ไล่จากบนลงล่าง ใช้เกรดแรกที่ full_defects_per_350g ไม่เกิน max (null = ไม่จำกัด)
+grades:
+  - {grade: A, max: 8}     # Specialty + Premium
+  - {grade: B, max: 23}    # Exchange
+  - {grade: C, max: null}  # Below standard + Off grade
+
+# เตือนเมื่อจำนวนเมล็ดน้อยเกินไป ผลจะแกว่งง่าย
+min_beans_warning: 30
