@@ -85,6 +85,7 @@ python mqtt/send.py results/TEST-ALL.json                  # ส่งผลไ�
 | ไฟล์ | เนื้อหา |
 |---|---|
 | [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) | **คู่มือเริ่มต้นตั้งแต่ศูนย์** ทีละขั้น + แก้ปัญหา + คำศัพท์ |
+| [docs/TRAINING_FLOW.md](docs/TRAINING_FLOW.md) | **ได้ dataset ใหม่ → เทรน → NCNN → Pi** ทีละขั้น พร้อม flowchart |
 | [docs/setup.md](docs/setup.md) | ติดตั้งคอม (CUDA) + Raspberry Pi + คำสั่งที่ใช้บ่อย |
 | [docs/journey.md](docs/journey.md) | เส้นทางการพัฒนา ปัญหาที่เจอ และวิธีแก้ |
 | [docs/datasets.md](docs/datasets.md) | dataset ที่ใช้และข้อจำกัด |
