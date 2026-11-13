@@ -17,3 +17,7 @@ yolo11n*.pt
 .vscode/
 Thumbs.db
 desktop.ini
+
+# ค่าเชื่อมต่อ server (มี username/password) · ห้าม push
+mqtt.yaml
+*.secret.yaml

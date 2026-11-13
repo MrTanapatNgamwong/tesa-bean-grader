@@ -1,33 +1,29 @@
 """
-pipeline.py — ภาพเมล็ดกาแฟ → ตัดเมล็ด → classify → นับ → เกรด → JSON
+detect.py — ภาพเมล็ดกาแฟ → ตัดเมล็ด → classify 7 คลาส → นับ → JSON + ภาพวาดกรอบ
+
+หน้าที่ของ Pi คือ "ตรวจจับและนับ" เท่านั้น · การคิดเกรดทำที่ฝั่ง server
 
 ขั้นตอน
-  1. ตัดเมล็ดออกจากภาพด้วย OpenCV (threshold + contour)  * ใช้ได้ดีกับพื้นหลังสีอ่อนเรียบ
-  2. classify ทีละเม็ดด้วยโมเดล NCNN (cls_v2)
-  3. นับต่อคลาส และคำนวณเกรดด้วย grade.py
-  4. บันทึก JSON (สิ่งที่ server ต้องการ) + ภาพที่วาดกรอบและชื่อคลาส
+  1. ตัดเมล็ดออกจากภาพด้วย OpenCV (threshold + contour)  * ใช้ได้ดีกับพื้นหลังสีอ่อนเรียบ เมล็ดไม่ติดกัน
+  2. classify ทีละเม็ดด้วยโมเดล NCNN (cls_v3)
+  3. นับจำนวนเมล็ดต่อคลาส (ครบ 7 คลาส คลาสที่ไม่เจอ = 0)
+  4. บันทึก JSON + ภาพที่วาดกรอบและชื่อคลาส
 
 วิธีรัน (บน Pi ที่ ~/tesa ใน venv):
-    python grader/pipeline.py full-test/ภาพ.jpg --lot TEST-001
-    python grader/pipeline.py full-test/*.jpg --lot TEST-002      # หลายภาพ = ล็อตเดียว
+    python detector/detect.py full-test/ภาพ.jpg --lot TEST-001
+    python detector/detect.py full-test/*.jpg --lot TEST-002      # หลายภาพ = ล็อตเดียว
 """
 import argparse
-import hashlib
 import json
-import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
 import cv2
 import numpy as np
-from PIL import Image
-
-sys.path.insert(0, str(Path(__file__).parent))  # ให้ import grade.py ที่อยู่โฟลเดอร์เดียวกันได้
-from grade import grade, load_config, merge_counts  # noqa: E402
 
 # ===== ตั้งค่า =====
-MODEL = "cls_v2_ncnn_model"   # โฟลเดอร์โมเดล (ชื่อต้องลงท้าย _ncnn_model)
+MODEL = "cls_v3_ncnn_model"   # โฟลเดอร์โมเดล (ชื่อต้องลงท้าย _ncnn_model)
 IMGSZ = 320                   # ต้องตรงกับตอนเทรน
 MIN_AREA_FRAC = 0.001         # ก้อนที่เล็กกว่า 0.1% ของภาพ = เศษ/จุดรบกวน ข้ามไป
 PAD = 0.10                    # เผื่อขอบรอบเมล็ดตอนตัด (เหมือน crop_beans.py)
@@ -62,28 +58,7 @@ def find_beans(img):
     return boxes
 
 
-def image_metadata(path, img):
-    """metadata ของภาพที่ส่งให้ server"""
-    meta = {
-        "filename": path.name,
-        "width": img.shape[1],
-        "height": img.shape[0],
-        "size_bytes": path.stat().st_size,
-        "sha256": hashlib.sha256(path.read_bytes()).hexdigest()[:16],  # ตัวระบุภาพแบบสั้น
-        "file_modified": datetime.fromtimestamp(path.stat().st_mtime).astimezone().isoformat(timespec="seconds"),
-        "captured_at": None,
-    }
-    try:  # เวลาถ่ายจาก EXIF ถ้ามี (ภาพจากกล้อง/มือถือ)
-        exif = Image.open(path).getexif()
-        dt = exif.get_ifd(0x8769).get(36867) or exif.get(306)  # DateTimeOriginal หรือ DateTime
-        if dt:
-            meta["captured_at"] = datetime.strptime(dt, "%Y:%m:%d %H:%M:%S").isoformat()
-    except Exception:
-        pass
-    return meta
-
-
-def process_image(model, path, out_dir):
+def process_image(model, class_names, path, out_dir):
     img = cv2.imread(str(path))
     if img is None:
         raise FileNotFoundError(f"เปิดภาพไม่ได้: {path}")
@@ -92,39 +67,40 @@ def process_image(model, path, out_dir):
     boxes = find_beans(img)
     t1 = time.perf_counter()
 
-    counts = {}
-    labels = []
+    counts = {name: 0 for name in class_names}
+    beans = []
     if boxes:
         crops = [img[y1:y2, x1:x2] for x1, y1, x2, y2 in boxes]
         results = model.predict(crops, imgsz=IMGSZ, verbose=False)  # ส่งทุกเม็ดเป็นชุดเดียว
-        for r in results:
+        for box, r in zip(boxes, results):
             name = r.names[r.probs.top1]
-            labels.append((name, float(r.probs.top1conf)))
-            counts[name] = counts.get(name, 0) + 1
+            counts[name] += 1
+            beans.append({"class": name, "conf": round(float(r.probs.top1conf), 3), "box": list(box)})
     t2 = time.perf_counter()
 
     # วาดกรอบ + ชื่อคลาสลงภาพ
     vis = img.copy()
-    for (x1, y1, x2, y2), (name, conf) in zip(boxes, labels):
-        color = COLORS.get(name, (255, 255, 255))
+    for b in beans:
+        x1, y1, x2, y2 = b["box"]
+        color = COLORS.get(b["class"], (255, 255, 255))
         cv2.rectangle(vis, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(vis, f"{name} {conf:.2f}", (x1, max(12, y1 - 4)),
+        cv2.putText(vis, f"{b['class']} {b['conf']:.2f}", (x1, max(12, y1 - 4)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1, cv2.LINE_AA)
     annotated = out_dir / f"{path.stem}_annotated.jpg"
     cv2.imwrite(str(annotated), vis)
 
-    meta = image_metadata(path, img)
-    meta.update({
-        "beans_detected": len(boxes),
+    return {
+        "filename": path.name,
+        "beans_detected": len(beans),
         "counts": counts,
+        "beans": beans,
         "timing_ms": {"segment": round((t1 - t0) * 1000, 1), "classify": round((t2 - t1) * 1000, 1)},
         "annotated_image": annotated.name,
-    })
-    return counts, meta
+    }
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Bean grading pipeline")
+    ap = argparse.ArgumentParser(description="Coffee bean detection (7 classes)")
     ap.add_argument("images", nargs="+", type=Path, help="ภาพหนึ่งภาพหรือหลายภาพของล็อตเดียวกัน")
     ap.add_argument("--lot", default=datetime.now().strftime("LOT-%Y%m%d-%H%M%S"))
     ap.add_argument("--model", default=MODEL)
@@ -132,36 +108,37 @@ def main():
 
     from ultralytics import YOLO  # import ตรงนี้เพื่อให้ --help ทำงานเร็ว
     model = YOLO(args.model, task="classify")
-    cfg = load_config()
+    model.predict(np.zeros((IMGSZ, IMGSZ, 3), np.uint8), imgsz=IMGSZ, verbose=False)  # warm-up + โหลดชื่อคลาส
+    class_names = list(model.names.values())
     OUT_DIR.mkdir(exist_ok=True)
 
     t_start = time.perf_counter()
-    all_counts, images_meta = [], []
+    total = {name: 0 for name in class_names}
+    images = []
     for path in args.images:
-        counts, meta = process_image(model, path, OUT_DIR)
-        all_counts.append(counts)
-        images_meta.append(meta)
-        print(f"{path.name}: {meta['beans_detected']} เม็ด {counts}  "
-              f"(ตัด {meta['timing_ms']['segment']} ms · classify {meta['timing_ms']['classify']} ms)")
+        info = process_image(model, class_names, path, OUT_DIR)
+        for name, n in info["counts"].items():
+            total[name] += n
+        images.append(info)
+        print(f"{path.name}: {info['beans_detected']} เม็ด {info['counts']}  "
+              f"(ตัด {info['timing_ms']['segment']} ms · classify {info['timing_ms']['classify']} ms)")
 
     result = {
         "lot_id": args.lot,
         "timestamp": datetime.now().astimezone().isoformat(timespec="seconds"),
         "device_id": DEVICE_ID,
         "model": Path(args.model).name,
-        "image_count": len(images_meta),
-        **grade(merge_counts(*all_counts), cfg),
-        "images": images_meta,
+        "image_count": len(images),
+        "total_beans": sum(total.values()),
+        "counts": total,
+        "images": images,
         "processing_ms": round((time.perf_counter() - t_start) * 1000, 1),
     }
 
     out_json = OUT_DIR / f"{args.lot}.json"
     out_json.write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8")
 
-    print(f"\nรวม {result['total_beans']} เม็ด · ดี {result['good_ratio']:.1%} · เสีย {result['defect_ratio']:.1%}")
-    print(f"full defects/350g = {result['full_defects_per_350g']} → เกรด {result['grade']}")
-    if result["warning"]:
-        print("⚠", result["warning"])
+    print(f"\nรวม {result['total_beans']} เม็ด · {total}")
     print(f"บันทึก {out_json} และภาพ *_annotated.jpg ใน {OUT_DIR}/")
 
 

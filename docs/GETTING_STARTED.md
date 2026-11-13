@@ -1,6 +1,8 @@
-# 🚀 คู่มือเริ่มต้นใช้งาน Bean Grader (ตั้งแต่ศูนย์)
+# 🚀 คู่มือเริ่มต้นใช้งาน Bean Detector (ตั้งแต่ศูนย์)
 
-คู่มือนี้พาทำตั้งแต่ยังไม่มีอะไรในเครื่อง จนได้หน้าเว็บตรวจเกรดเมล็ดกาแฟบน Raspberry Pi และส่งผลผ่าน MQTT ทำตามลำดับทีละขั้น ไม่ต้องข้าม
+คู่มือนี้พาทำตั้งแต่ยังไม่มีอะไรในเครื่อง จนได้โปรแกรมตรวจจับและนับเมล็ดกาแฟ 7 คลาสบน Raspberry Pi ทำตามลำดับทีละขั้น ไม่ต้องข้าม
+
+> ขอบเขต: Pi ตรวจจับ + นับเท่านั้น · การคิดเกรดอยู่ฝั่ง server · การส่งผลผ่าน MQTT จะเพิ่มในขั้นถัดไป
 
 > **อ่านก่อน:** ทุกคำสั่งในคู่มือบอกไว้ว่ารันที่ไหน
 > - 💻 **คอม** = เครื่อง Windows (หน้าบรรทัด `C:\...>`)
@@ -19,11 +21,9 @@
 5. [เตรียม Raspberry Pi](#5-เตรียม-raspberry-pi)
 6. [ส่งโมเดลและโค้ดไป Pi](#6-ส่งโมเดลและโค้ดไป-pi)
 7. [ทดสอบบน Pi](#7-ทดสอบบน-pi)
-8. [เปิดหน้าเว็บ Bean Grader](#8-เปิดหน้าเว็บ-bean-grader)
-9. [ส่งผลผ่าน MQTT](#9-ส่งผลผ่าน-mqtt)
-10. [ปรับแต่ง: เกณฑ์เกรด / คลาส / server](#10-ปรับแต่ง)
-11. [แก้ปัญหาที่พบบ่อย](#11-แก้ปัญหาที่พบบ่อย)
-12. [คำศัพท์](#12-คำศัพท์)
+8. [ปรับแต่ง](#8-ปรับแต่ง)
+9. [แก้ปัญหาที่พบบ่อย](#9-แก้ปัญหาที่พบบ่อย)
+10. [คำศัพท์](#10-คำศัพท์)
 
 ---
 
@@ -34,15 +34,14 @@
 ┌──────────────────────────┐            ┌─────────────────────────────────┐
 │ dataset → ตัดเมล็ด        │   export   │ ภาพ → ตัดเมล็ด (OpenCV)          │
 │ → เทรน classifier (GPU)  │ ─────────► │ → จำแนก 7 คลาส (NCNN)            │
-│ → ได้โมเดล .pt           │   NCNN     │ → นับ → เกรด A/B/C → หน้าเว็บ     │
-└──────────────────────────┘            │ → ส่ง JSON ผ่าน MQTT ไป server    │
-                                        └─────────────────────────────────┘
+│ → ได้โมเดล .pt           │   NCNN     │ → นับต่อคลาส → JSON + ภาพวาดกรอบ │
+└──────────────────────────┘            └─────────────────────────────────┘
 ```
 
 - **คอม** ใช้เทรน (เร็วเพราะมี GPU) · **Pi** ใช้รันจริง (ไม่มี GPU ใช้ CPU ล้วน)
 - โมเดลเทรนเป็น `.pt` (PyTorch) แล้วแปลงเป็น **NCNN** เพื่อให้รันบน Pi ได้เร็วและเบา
 
-**มีโมเดลแล้วไม่อยากเทรนเอง?** repo นี้มี `models/cls_v2.pt` ให้แล้ว ข้ามข้อ 4 ไปข้อ 5 ได้ (แต่ยังต้องทำข้อ 2 เพื่อ export)
+**มีโมเดลแล้วไม่อยากเทรนเอง?** repo นี้มี `models/cls_v3.pt` ให้แล้ว ข้ามข้อ 4 ไปข้อ 5 ได้ (แต่ยังต้องทำข้อ 2 เพื่อ export)
 
 ---
 
@@ -136,7 +135,7 @@ git clone https://github.com/MrTanapatNgamwong/tesa-bean-grader.git
 repo เป็น Private ต้องได้รับเชิญเป็น collaborator ก่อน แล้วคัดลอกโค้ดไปที่ทำงาน:
 
 ```bat
-xcopy /E /I C:\tesa-bean-grader\grader C:\tesa-pi\grader
+xcopy /E /I C:\tesa-bean-grader\detector C:\tesa-pi\detector
 xcopy /E /I C:\tesa-bean-grader\scripts C:\tesa-pi\scripts
 xcopy /E /I C:\tesa-bean-grader\models C:\tesa-pi\models
 ```
@@ -154,13 +153,17 @@ tar -xf "%USERPROFILE%\Downloads\ชื่อไฟล์.zip" -C datasets\robus
 dir datasets\robusta-digkit3
 ```
 
-ต้องเห็น `data.yaml`, `train`, `valid`, `test` · รายละเอียด dataset: [datasets.md](datasets.md)
+ต้องเห็น `data.yaml`, `train`, `valid`, `test`
+
+4. ทำแบบเดียวกันกับ **coffee-bean-defect** (niacubilla) → แตกไปที่ `C:\tesa-pi\datasets\coffee-defect-nia`
+
+รายละเอียด dataset: [datasets.md](datasets.md)
 
 ---
 
 ## 4. เตรียมข้อมูลและเทรนโมเดล
 
-> ข้ามได้ถ้าใช้ `models/cls_v2.pt` ที่มีให้
+> ข้ามได้ถ้าใช้ `models/cls_v3.pt` ที่มีให้
 
 ### 4.1 ตัดเมล็ดเป็นภาพเดี่ยว 💻 `(.venv)`
 
@@ -169,36 +172,43 @@ dataset ให้ภาพที่มีหลายเมล็ดพร้อ
 ```bat
 cd C:\tesa-pi
 python scripts\crop_beans.py
+python scripts\crop_beans.py --preset nia --src datasets/coffee-defect-nia --dst datasets/beans-cls-nia --prefix nia
+python scripts\merge_cls.py
 ```
 
-ได้ `datasets\beans-cls\{train,val,test}\{7 คลาส}` และตารางจำนวนเมล็ดต่อคลาส
+- บรรทัดแรก: ROBUSTA → `datasets\beans-cls` · บรรทัดสอง: NIA → `datasets\beans-cls-nia` (`--preset` = ตารางแปลงชื่อคลาสของแต่ละ dataset)
+- `merge_cls.py` รวมทั้งสองชุดเป็น `datasets\beans-cls-v3\{train,val,test}\{7 คลาส}` · NIA ถูกแบ่งใหม่ตามภาพต้นฉบับ เพราะทุกภาพมี 2 สำเนาอยู่คนละ split
 
 ### 4.2 เทรน classifier 💻 `(.venv)`
 
 ```bat
-yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls epochs=60 imgsz=320 device=0 name=cls_v2
+yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v3 epochs=60 imgsz=320 device=0 name=cls_v3
 ```
 
 - `classify` = จำแนกทั้งภาพ (ภาพละ 1 เมล็ด → 1 คลาส)
 - `yolo26n-cls.pt` = โมเดลตั้งต้นขนาดเล็กสุด ดาวน์โหลดอัตโนมัติ
 - `epochs=60` จำนวนรอบ · `imgsz=320` ขนาดภาพ · `device=0` ใช้ GPU ตัวแรก
-- ผลอยู่ที่ `runs\classify\cls_v2\` (โมเดล `weights\best.pt` · ดู `confusion_matrix_normalized.png`)
+- ผลอยู่ที่ `runs\classify\cls_v3\` (โมเดล `weights\best.pt` · ดู `confusion_matrix_normalized.png`)
 
-ใช้เวลาไม่กี่นาทีบน RTX 4060 · ผลที่เราได้: top1 ≈ 0.865 (val)
+ใช้เวลาไม่กี่นาทีบน RTX 4060
 
 ### 4.3 วัดผลกับชุด test 💻 `(.venv)`
 
 ```bat
-yolo classify val model=runs\classify\cls_v2\weights\best.pt data=datasets/beans-cls split=test imgsz=320
+python scripts\eval_cls.py --model runs\classify\cls_v3\weights\best.pt --data datasets\beans-cls-v3\test --exclude nia_
+python scripts\eval_cls.py --model runs\classify\cls_v3\weights\best.pt --data datasets\beans-cls-v3\test --include nia_
 ```
+
+- `eval_cls.py` = วัดความแม่นต่อคลาส · `--exclude nia_` = เฉพาะ ROBUSTA · `--include nia_` = เฉพาะ NIA
+- ผลที่เราได้: ROBUSTA 0.787 · NIA 0.959
 
 ### 4.4 แปลงเป็น NCNN 💻 `(.venv)`
 
 ```bat
-yolo export model=runs\classify\cls_v2\weights\best.pt format=ncnn imgsz=320
+yolo export model=runs\classify\cls_v3\weights\best.pt format=ncnn imgsz=320
 ```
 
-(ใช้โมเดลใน repo: แทน path ด้วย `models\cls_v2.pt`)
+(ใช้โมเดลใน repo: แทน path ด้วย `models\cls_v3.pt`)
 
 ได้โฟลเดอร์ `best_ncnn_model` ข้างไฟล์ `.pt` · `imgsz` ต้องตรงกับตอนเทรน
 
@@ -233,14 +243,14 @@ ssh admin@tesa-pi.local
 
 ```bash
 sudo apt update && sudo apt full-upgrade -y
-sudo apt install -y tmux time mosquitto mosquitto-clients
+sudo apt install -y tmux time
 mkdir ~/tesa && cd ~/tesa
 python3 -m venv .venv
 source .venv/bin/activate
-pip install ultralytics ncnn pyyaml gradio paho-mqtt
+pip install ultralytics ncnn pyyaml
 ```
 
-- `tmux` = หน้าต่างที่รันต่อได้แม้ SSH หลุด · `mosquitto` = MQTT broker จำลองไว้ทดสอบ
+- `tmux` = หน้าต่างที่รันต่อได้แม้ SSH หลุด
 - ติดตั้งนาน ควรรันใน tmux และใช้ Wi-Fi บ้าน (ไฟล์ใหญ่หลายร้อย MB)
 
 ### 5.4 ทุกครั้งที่ SSH เข้า Pi 🍓
@@ -261,114 +271,51 @@ source .venv/bin/activate
 
 ```bat
 cd C:\tesa-pi
-scp -r runs\classify\cls_v2\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v2_ncnn_model
-scp -r grader admin@tesa-pi.local:~/tesa/
+scp -r runs\classify\cls_v3\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v3_ncnn_model
+scp -r detector admin@tesa-pi.local:~/tesa/
 scp scripts\eval_cls_pi.py admin@tesa-pi.local:~/tesa/
-scp -r datasets\beans-cls\test admin@tesa-pi.local:~/tesa/beans-test
+scp -r datasets\beans-cls-v3\test admin@tesa-pi.local:~/tesa/beans-test
 scp -r datasets\robusta-digkit3\test\images admin@tesa-pi.local:~/tesa/full-test
 ```
 
 > ⚠️ ชื่อโฟลเดอร์โมเดลบน Pi **ต้องลงท้ายด้วย `_ncnn_model`** ไม่งั้น Ultralytics ไม่รู้จัก (error: `is not a supported model format`)
 
-เช็กบน 🍓: `ls ~/tesa` ต้องเห็น `cls_v2_ncnn_model`, `grader`, `beans-test`, `full-test`
+เช็กบน 🍓: `ls ~/tesa` ต้องเห็น `cls_v3_ncnn_model`, `detector`, `beans-test`, `full-test`
 
 ---
 
 ## 7. ทดสอบบน Pi 🍓 `(.venv)`
 
-### 7.1 สูตรเกรด
-
-```bash
-python grader/grade.py
-```
-
-ต้องขึ้น `[PASS]` 5 บรรทัด + `ทุกกรณีผ่าน ✅`
-
-### 7.2 ความแม่นและความเร็วของโมเดล
+### 7.1 ความแม่นและความเร็วของโมเดล
 
 ```bash
 python eval_cls_pi.py
 ```
 
-ได้ความแม่นต่อคลาส + เวลาต่อเม็ด (เราได้ ~11.7 ms/เม็ด)
+ได้ความแม่นต่อคลาส + เวลาต่อเม็ด (เราได้ ~5–12 ms/เม็ด)
 
-### 7.3 Pipeline ทั้งสาย (command line)
+### 7.2 ตรวจจับทั้งสาย
 
 ```bash
-python grader/pipeline.py full-test/*.jpg --lot TEST-ALL
+python detector/detect.py full-test/*.jpg --lot TEST-ALL
 ```
 
-ได้ `results/TEST-ALL.json` และภาพวาดกรอบ `results/*_annotated.jpg`
+ได้ `results/TEST-ALL.json` (จำนวนต่อคลาสรวมทั้งล็อต + รายเม็ดต่อภาพ) และภาพวาดกรอบ `results/*_annotated.jpg`
 
 ดึงผลมาดูบนคอม 💻: `scp -r admin@tesa-pi.local:~/tesa/results pi-results`
 
 ---
 
-## 8. เปิดหน้าเว็บ Bean Grader
-
-1. 🍓 รันโปรแกรม (ใน tmux)
-
-```bash
-python grader/app.py
-```
-
-รอจนขึ้น `Running on local URL: http://0.0.0.0:7860`
-
-2. 🍓 ดู IP ของ Pi (หน้าต่าง SSH อีกอัน): `hostname -I`
-3. 💻 เปิดเบราว์เซอร์: `http://<IP ของ Pi>:7860` เช่น `http://192.168.1.175:7860`
-4. อัปโหลดภาพ (หลายภาพ = ล็อตเดียว) → ใส่รหัสล็อต → **ตรวจเกรด**
-5. หยุดโปรแกรม: `Ctrl + C`
-
-**เปิดไม่ได้?** ใช้อุโมงค์ SSH (ไม่ต้องสนใจ IP):
-
-```bat
-ssh -L 7860:localhost:7860 admin@tesa-pi.local
-```
-
-เปิดหน้าต่างนี้ค้างไว้ แล้วเปิด `http://localhost:7860`
-
----
-
-## 9. ส่งผลผ่าน MQTT
-
-**MQTT** = ระบบส่งข้อความผ่านตัวกลาง (broker) · Pi ส่ง (publish) · server รับ (subscribe)
-
-### 9.1 ทดสอบในเครื่อง 🍓
-
-หน้าต่าง A รอรับ:
-
-```bash
-mosquitto_sub -h localhost -t "coffee/+/ai_results" -v
-```
-
-หน้าต่าง B: เปิด `grader/app.py` แล้วกดตรวจเกรดบนเว็บ (ติ๊ก "ส่งผลไป server อัตโนมัติ")
-
-หน้าต่าง A ต้องขึ้น เช่น
-
-```
-coffee/LOT01/ai_results {"good": 9, "shell": 0, "full_black": 5, "broken": 0, "parchment": 2, "hull_husk": 15, "immature": 21, "defect_ratio": 82.69}
-```
-
-### 9.2 ใช้กับ server จริง
-
-แก้ `grader/mqtt.yaml` บรรทัด `host:` เป็นที่อยู่ broker จริง แล้วรัน app ใหม่ · ส่งซ้ำได้ด้วยปุ่ม "ส่งผลล่าสุดไป server อีกครั้ง"
-
----
-
-## 10. ปรับแต่ง
+## 8. ปรับแต่ง
 
 | อยากเปลี่ยน | แก้ที่ |
 |---|---|
-| เส้นแบ่งเกรด A/B/C, น้ำหนักแต่ละคลาส | `grader/grading.yaml` |
-| broker / topic / ชื่อฟิลด์ที่ส่ง server | `grader/mqtt.yaml` |
-| โมเดลที่ใช้, ขนาดภาพ, ความไวการตัดเมล็ด | ส่วนตั้งค่าบนสุดของ `grader/pipeline.py` (`MODEL`, `IMGSZ`, `MIN_AREA_FRAC`) |
-| คลาสของ dataset ใหม่ | `CLASS_MAP` ใน `scripts/crop_beans.py` แล้วเทรนใหม่ |
-
-รายละเอียดเกณฑ์เกรด: [grading.md](grading.md)
+| โมเดลที่ใช้, ขนาดภาพ, ความไวการตัดเมล็ด | ส่วนตั้งค่าบนสุดของ `detector/detect.py` (`MODEL`, `IMGSZ`, `MIN_AREA_FRAC`) |
+| คลาสของ dataset ใหม่ | `PRESETS` ใน `scripts/crop_beans.py` แล้วเทรนใหม่ |
 
 ---
 
-## 11. แก้ปัญหาที่พบบ่อย
+## 9. แก้ปัญหาที่พบบ่อย
 
 | อาการ | สาเหตุ / วิธีแก้ |
 |---|---|
@@ -379,16 +326,14 @@ coffee/LOT01/ai_results {"good": 9, "shell": 0, "full_black": 5, "broken": 0, "p
 | `is not a supported model format` | ชื่อโฟลเดอร์ NCNN ต้องลงท้าย `_ncnn_model` |
 | `scp: No such file or directory` | path ผิด หรือไฟล์ยังอยู่ใน Downloads |
 | export NCNN โหลด `pnnx` ช้ามาก | `Ctrl + C` แล้ว `pip install pnnx` เอง จากนั้นรัน export ซ้ำ |
-| เว็บ "ปฏิเสธการเชื่อมต่อ" | `tesa-pi.local` ชี้ IPv6 → ใช้ IP จาก `hostname -I` |
-| เว็บ "ตอบกลับนานเกินไป" | คอมกับ Pi คนละวง → ต่อ Wi-Fi เดียวกัน หรือใช้อุโมงค์ SSH |
+| `ssh admin@tesa-pi.local` ไม่ติด | `tesa-pi.local` อาจชี้ IPv6 → ใช้ IP จาก `hostname -I` แทน |
 | SSH หลุดระหว่างติดตั้ง | ใช้ tmux · ถ้า apt ค้าง: `sudo dpkg --configure -a` |
 | `tmux attach` ขึ้น `no sessions` | Pi รีบูตไปแล้ว → `tmux new -s tesa` |
-| เกรดออก C เกือบทุกครั้ง | ปกติถ้าภาพมีเมล็ดเสียมาก (เกณฑ์ SCA เข้ม) ดูคำอธิบายใน [grading.md](grading.md) และ [results.md](results.md) |
 | ภาพจาก dataset อื่นทายผิดเยอะ | domain shift: โมเดลเรียนจากภาพแบบเดียว → เทรนเพิ่มด้วยภาพแบบนั้น |
 
 ---
 
-## 12. คำศัพท์
+## 10. คำศัพท์
 
 | คำ | ความหมาย |
 |---|---|
@@ -399,7 +344,5 @@ coffee/LOT01/ai_results {"good": 9, "shell": 0, "full_black": 5, "broken": 0, "p
 | confusion matrix | ตารางว่าคลาสจริงแต่ละคลาส ถูกทายเป็นอะไรบ้าง |
 | NCNN | รูปแบบโมเดลที่รันบน CPU แบบ ARM (Pi) ได้เร็ว ไม่ต้องใช้ PyTorch |
 | inference / predict | ใช้โมเดลทำนายภาพใหม่ (ไม่ได้เทรน) |
-| full defect | หน่วยนับเมล็ดเสียตามมาตรฐาน SCA (เมล็ดดำ 1 เม็ด = 1, เมล็ดเสียอื่น 5 เม็ด = 1) |
-| MQTT / broker / topic | ระบบส่งข้อความ / ตัวกลาง / ชื่อช่องทางของข้อความ |
 | SSH / scp | สั่งงานเครื่องอื่นผ่านเครือข่าย / คัดลอกไฟล์ผ่าน SSH |
 | tmux | หน้าต่าง terminal ที่รันต่อได้แม้ SSH หลุด |

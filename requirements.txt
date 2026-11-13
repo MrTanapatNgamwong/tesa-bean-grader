@@ -3,9 +3,6 @@ ultralytics==8.4.208
 ncnn
 opencv-python
 numpy
-pillow
 pyyaml
-gradio==6.31.0
-paho-mqtt==2.2.0
 # เฉพาะเครื่องเทรน (Windows + RTX): ติดตั้ง torch แบบ CUDA จาก pytorch.org ก่อน แล้วค่อยติดตั้งไฟล์นี้
 # pnnx   # ใช้ตอน export เป็น NCNN
