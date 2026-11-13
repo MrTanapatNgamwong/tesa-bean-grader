@@ -1,0 +1,29 @@
+# mqtt.yaml — ตั้งค่าการส่งผลไป server
+enabled: true
+
+# ===== broker: EMQX Cloud (ขอข้อมูลจากทีม server) =====
+# Serverless บังคับ TLS พอร์ต 8883 + username/password
+# คัดลอกไฟล์นี้เป็น mqtt.yaml แล้วกรอกค่าจริง · mqtt.yaml ถูก .gitignore ไว้ ห้าม push
+host: YOUR_BROKER_HOST              # ขอจากทีม server
+port: 8883
+username: YOUR_USERNAME
+password: YOUR_PASSWORD
+tls: true
+ca_cert: null                   # ทีม server ใช้ tls_set() แบบไม่ระบุไฟล์ = ใช้ใบรับรองมาตรฐานของระบบ
+
+# ทดสอบที่บ้านด้วย Mosquitto บน Pi: host localhost · port 1883 · username null · password null · tls false
+
+# ===== ข้อความ (ยืนยันจากทีม server: ไม่เปลี่ยน) =====
+topic: coffee/{lot_id}/ai_results
+qos: 1
+client_id: tesa-pi-grader       # ต้องไม่ซ้ำกับอุปกรณ์อื่นที่ต่อ broker เดียวกัน
+timeout_s: 10
+
+field_map:
+  good: good
+  shell: shell
+  full_black: full_black
+  broken: broken
+  parchment: parchment
+  husk: hull_husk
+  immature: immature

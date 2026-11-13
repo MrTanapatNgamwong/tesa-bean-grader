@@ -2,7 +2,7 @@
 
 คู่มือนี้พาทำตั้งแต่ยังไม่มีอะไรในเครื่อง จนได้โปรแกรมตรวจจับและนับเมล็ดกาแฟ 7 คลาสบน Raspberry Pi ทำตามลำดับทีละขั้น ไม่ต้องข้าม
 
-> ขอบเขต: Pi ตรวจจับ + นับเท่านั้น · การคิดเกรดอยู่ฝั่ง server · การส่งผลผ่าน MQTT จะเพิ่มในขั้นถัดไป
+> ขอบเขต: Pi ตรวจจับ + นับ แล้วส่งจำนวนต่อคลาสผ่าน MQTT · การคิดเกรดอยู่ฝั่ง server · โมเดลแต่ละรุ่นดูที่ [versions/](../versions/README.md)
 
 > **อ่านก่อน:** ทุกคำสั่งในคู่มือบอกไว้ว่ารันที่ไหน
 > - 💻 **คอม** = เครื่อง Windows (หน้าบรรทัด `C:\...>`)
@@ -41,7 +41,7 @@
 - **คอม** ใช้เทรน (เร็วเพราะมี GPU) · **Pi** ใช้รันจริง (ไม่มี GPU ใช้ CPU ล้วน)
 - โมเดลเทรนเป็น `.pt` (PyTorch) แล้วแปลงเป็น **NCNN** เพื่อให้รันบน Pi ได้เร็วและเบา
 
-**มีโมเดลแล้วไม่อยากเทรนเอง?** repo นี้มี `models/cls_v3.pt` ให้แล้ว ข้ามข้อ 4 ไปข้อ 5 ได้ (แต่ยังต้องทำข้อ 2 เพื่อ export)
+**มีโมเดลแล้วไม่อยากเทรนเอง?** repo นี้มี `versions/v3/cls_v3.pt` ให้แล้ว ข้ามข้อ 4 ไปข้อ 5 ได้ (แต่ยังต้องทำข้อ 2 เพื่อ export)
 
 ---
 
@@ -137,7 +137,7 @@ repo เป็น Private ต้องได้รับเชิญเป็น
 ```bat
 xcopy /E /I C:\tesa-bean-grader\detector C:\tesa-pi\detector
 xcopy /E /I C:\tesa-bean-grader\scripts C:\tesa-pi\scripts
-xcopy /E /I C:\tesa-bean-grader\models C:\tesa-pi\models
+xcopy /E /I C:\tesa-bean-grader\mqtt C:\tesa-pi\mqtt
 ```
 
 ### 3.2 Dataset 💻
@@ -163,7 +163,7 @@ dir datasets\robusta-digkit3
 
 ## 4. เตรียมข้อมูลและเทรนโมเดล
 
-> ข้ามได้ถ้าใช้ `models/cls_v3.pt` ที่มีให้
+> ข้ามได้ถ้าใช้ `versions/v3/cls_v3.pt` ที่มีให้
 
 ### 4.1 ตัดเมล็ดเป็นภาพเดี่ยว 💻 `(.venv)`
 
@@ -208,7 +208,7 @@ python scripts\eval_cls.py --model runs\classify\cls_v3\weights\best.pt --data d
 yolo export model=runs\classify\cls_v3\weights\best.pt format=ncnn imgsz=320
 ```
 
-(ใช้โมเดลใน repo: แทน path ด้วย `models\cls_v3.pt`)
+(ใช้โมเดลใน repo: แทน path ด้วย `versions\v3\cls_v3.pt`)
 
 ได้โฟลเดอร์ `best_ncnn_model` ข้างไฟล์ `.pt` · `imgsz` ต้องตรงกับตอนเทรน
 
@@ -247,7 +247,7 @@ sudo apt install -y tmux time
 mkdir ~/tesa && cd ~/tesa
 python3 -m venv .venv
 source .venv/bin/activate
-pip install ultralytics ncnn pyyaml
+pip install ultralytics ncnn pyyaml paho-mqtt
 ```
 
 - `tmux` = หน้าต่างที่รันต่อได้แม้ SSH หลุด
@@ -304,6 +304,18 @@ python detector/detect.py full-test/*.jpg --lot TEST-ALL
 
 ดึงผลมาดูบนคอม 💻: `scp -r admin@tesa-pi.local:~/tesa/results pi-results`
 
+### 7.3 ส่งผลไป server (MQTT)
+
+ครั้งแรก: คัดลอก `mqtt/mqtt.example.yaml` เป็น `mqtt/mqtt.yaml` แล้วกรอก host / username / password ที่ได้จากทีม server
+
+```bash
+cp mqtt/mqtt.example.yaml mqtt/mqtt.yaml
+nano mqtt/mqtt.yaml
+python mqtt/send.py results/TEST-ALL.json
+```
+
+ขึ้น `✅ ส่งแล้ว → ...` = สำเร็จ · `mqtt.yaml` มีรหัสผ่าน ถูก `.gitignore` ไว้ ห้าม push
+
 ---
 
 ## 8. ปรับแต่ง
@@ -344,5 +356,6 @@ python detector/detect.py full-test/*.jpg --lot TEST-ALL
 | confusion matrix | ตารางว่าคลาสจริงแต่ละคลาส ถูกทายเป็นอะไรบ้าง |
 | NCNN | รูปแบบโมเดลที่รันบน CPU แบบ ARM (Pi) ได้เร็ว ไม่ต้องใช้ PyTorch |
 | inference / predict | ใช้โมเดลทำนายภาพใหม่ (ไม่ได้เทรน) |
+| MQTT / broker / topic | ระบบส่งข้อความ / ตัวกลาง / ชื่อช่องทางของข้อความ |
 | SSH / scp | สั่งงานเครื่องอื่นผ่านเครือข่าย / คัดลอกไฟล์ผ่าน SSH |
 | tmux | หน้าต่าง terminal ที่รันต่อได้แม้ SSH หลุด |

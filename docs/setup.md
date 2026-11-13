@@ -22,7 +22,7 @@ sudo apt update && sudo apt full-upgrade -y
 sudo apt install -y tmux time
 mkdir ~/tesa && cd ~/tesa
 python3 -m venv .venv && source .venv/bin/activate
-pip install ultralytics ncnn pyyaml
+pip install ultralytics ncnn pyyaml paho-mqtt
 ```
 
 ทุกครั้งที่ SSH เข้ามา: `tmux attach -t tesa` (หรือ `tmux new -s tesa`) → `cd ~/tesa` → `source .venv/bin/activate`
@@ -37,7 +37,7 @@ yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v3 epochs=60 im
 python scripts\eval_cls.py --model runs\classify\cls_v3\weights\best.pt --data datasets\beans-cls-v3\test
 yolo export model=runs\classify\cls_v3\weights\best.pt format=ncnn imgsz=320
 scp -r runs\classify\cls_v3\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v3_ncnn_model
-scp -r detector admin@tesa-pi.local:~/tesa/
+scp -r detector mqtt admin@tesa-pi.local:~/tesa/
 ```
 
 ⚠️ โฟลเดอร์ NCNN ต้องลงท้าย `_ncnn_model` ไม่งั้น Ultralytics ไม่รู้จัก
