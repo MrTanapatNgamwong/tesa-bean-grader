@@ -16,7 +16,7 @@ from pathlib import Path
 from ultralytics import YOLO
 
 # ===== ตั้งค่า =====
-MODEL = "cls_v3_ncnn_model"  # โฟลเดอร์โมเดล NCNN (ชื่อต้องลงท้าย _ncnn_model)
+MODEL = "cls_v4_ncnn_model"  # โฟลเดอร์โมเดล NCNN (ชื่อต้องลงท้าย _ncnn_model)
 DATA = Path("beans-test")  # โฟลเดอร์ภาพทดสอบ
 IMGSZ = 320                # ต้องตรงกับตอนเทรน/export
 

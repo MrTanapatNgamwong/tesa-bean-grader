@@ -1,9 +1,9 @@
 # 🔁 Flow เทรนโมเดลรุ่นใหม่ → NCNN → Raspberry Pi
 
-คู่มือนี้ใช้เมื่อ **ได้ dataset ใหม่** แล้วอยากได้ classifier รุ่นถัดไป (เช่น v4) ไปรันบน Pi ทำตามลำดับได้เลย
+คู่มือนี้ใช้เมื่อ **ได้ dataset ใหม่** แล้วอยากได้ classifier รุ่นถัดไป (เช่น v5) ไปรันบน Pi ทำตามลำดับได้เลย
 (ใช้กับ classifier YOLO26n-cls ที่จำแนกเมล็ดทีละเม็ด · งาน Day 2 detection/segmentation เป็นอีก flow)
 
-> ในคู่มือนี้แทนรุ่นใหม่ด้วย **v4** และ dataset ใหม่ด้วยชื่อ **`new`** · เปลี่ยนเป็นชื่อจริงทุกครั้ง
+> ในคู่มือนี้แทนรุ่นใหม่ด้วย **v5** และ dataset ใหม่ด้วยชื่อ **`new`** · เปลี่ยนเป็นชื่อจริงทุกครั้ง
 > 💻 = คอม Windows (Command Prompt) · 🍓 = Raspberry Pi (ผ่าน SSH)
 
 ---
@@ -22,20 +22,20 @@ flowchart TD
     D -->|C: ภาพกองไม่มี label| X[ยังไม่มีสคริปต์<br/>label ใน Roboflow แล้ว export<br/>เป็นแบบ A]
     X --> E
 
-    F --> H[5. แก้ค่าใน merge_cls.py<br/>DST = beans-cls-v4]
+    F --> H[5. แก้ค่าใน merge_cls.py<br/>DST = beans-cls-v5]
     G --> H
-    H --> I[รัน merge_cls.py<br/>→ datasets/beans-cls-v4]
-    I --> J[6. yolo classify train<br/>name=cls_v4]
-    J --> K[7. eval_cls.py<br/>วัด v4 และ v3 ด้วย test ชุดเดียวกัน]
-    K --> L{v4 ดีกว่า v3?}
+    H --> I[รัน merge_cls.py<br/>→ datasets/beans-cls-v5]
+    I --> J[6. yolo classify train<br/>name=cls_v5]
+    J --> K[7. eval_cls.py<br/>วัด v5 และ v4 ด้วย test ชุดเดียวกัน]
+    K --> L{v5 ดีกว่า v4?}
     L -->|ไม่| M[เพิ่มข้อมูลคลาสที่อ่อน /<br/>ปรับ epochs แล้วเทรนใหม่]
     M --> J
     L -->|ใช่| N[8. yolo export format=ncnn<br/>→ best_ncnn_model]
-    N --> O[9. scp ไป Pi<br/>ตั้งชื่อ cls_v4_ncnn_model]
+    N --> O[9. scp ไป Pi<br/>ตั้งชื่อ cls_v5_ncnn_model]
     O --> P[10. 🍓 วัดบน Pi ด้วย eval_cls.py]
-    P --> Q[11. 🍓 detect.py --model cls_v4_ncnn_model]
+    P --> Q[11. 🍓 detect.py --model cls_v5_ncnn_model]
     Q --> R[12. 🍓 mqtt/send.py ส่งผลไป server]
-    R --> S[13. บันทึกรุ่นใน versions/v4<br/>+ commit + push]
+    R --> S[13. บันทึกรุ่นใน versions/v5<br/>+ commit + push]
     S --> T([เสร็จ])
 ```
 
@@ -113,24 +113,24 @@ python scripts\crop_beans.py --preset new --src datasets/new --dst datasets/bean
 
 ```python
 KEEP_SPLIT = [Path("datasets/beans-cls")]                                  # ใช้การแบ่ง train/val/test เดิม
-RESPLIT = [Path("datasets/beans-cls-nia"), Path("datasets/beans-cls-new")] # เทรวมแล้วแบ่งใหม่ 80/10/10
-DST = Path("datasets/beans-cls-v4")                                        # ⚠️ ชื่อใหม่ทุกครั้ง
+RESPLIT = [Path("datasets/beans-cls-nia"), Path("datasets/beans-cls-cfe"), Path("datasets/beans-cls-new")]  # เทรวมแล้วแบ่งใหม่ 80/10/10
+DST = Path("datasets/beans-cls-v5")                                        # ⚠️ ชื่อใหม่ทุกครั้ง
 ```
 
 - ใส่ชุดใหม่ใน **`RESPLIT`** ถ้า: ไม่มี valid/test, มีน้อย, หรือมาจาก Roboflow (ภาพเดียวกันมักมีหลายสำเนาคนละ split)
 - ใส่ใน **`KEEP_SPLIT`** ถ้า: ผู้จัดแบ่ง train/val/test มาให้แล้วและต้องใช้ตามนั้น
-- ⚠️ `merge_cls.py` **ลบโฟลเดอร์ `DST` ทิ้งก่อนสร้างใหม่** ห้ามตั้ง `DST` เป็น `beans-cls-v3` ไม่งั้นชุดของ v3 หายและจะเทียบผลไม่ได้
+- ⚠️ `merge_cls.py` **ลบโฟลเดอร์ `DST` ทิ้งก่อนสร้างใหม่** ห้ามตั้ง `DST` เป็น `beans-cls-v4` ไม่งั้นชุดของ v4 หายและจะเทียบผลไม่ได้
 
 ```bat
 python scripts\merge_cls.py
 ```
 
-**เช็กผล:** ตารางสรุปท้ายสุด `[รวม → datasets\beans-cls-v4]` ต้องมีครบ 7 คลาส และ val/test ไม่เป็น 0
+**เช็กผล:** ตารางสรุปท้ายสุด `[รวม → datasets\beans-cls-v5]` ต้องมีครบ 7 คลาส และ val/test ไม่เป็น 0
 
 ## 6. เทรน 💻
 
 ```bat
-yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v4 epochs=60 imgsz=320 device=0 name=cls_v4
+yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v5 epochs=60 imgsz=320 device=0 name=cls_v5
 ```
 
 | ตัวเลือก | ความหมาย |
@@ -138,46 +138,46 @@ yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v4 epochs=60 im
 | `classify` | งานจำแนก: ภาพละ 1 เมล็ด → 1 คลาส |
 | `model=yolo26n-cls.pt` | โมเดลตั้งต้นขนาดเล็กสุด (มีใน `C:\tesa-pi` แล้ว) |
 | `data=` | ชุดที่รวมจากขั้น 5 |
-| `epochs=60` | จำนวนรอบ · v3 ใช้ 60 (~24 นาทีบน RTX 4060) |
+| `epochs=60` | จำนวนรอบ · v4 ใช้ 60 (~84 นาทีบน RTX 4060) |
 | `imgsz=320` | ขนาดภาพ · **ต้องใช้เลขเดียวกันตอน export และบน Pi** |
 | `device=0` | ใช้การ์ดจอ |
-| `name=cls_v4` | ชื่อโฟลเดอร์ผล → `runs\classify\cls_v4\` |
+| `name=cls_v5` | ชื่อโฟลเดอร์ผล → `runs\classify\cls_v5\` |
 
-- ถ้ามี `cls_v4` อยู่แล้ว Ultralytics จะตั้งชื่อใหม่เป็น `cls_v42` เอง → ดูชื่อโฟลเดอร์จริงที่บรรทัดท้ายตอนเทรนเสร็จ
+- ถ้ามี `cls_v5` อยู่แล้ว Ultralytics จะตั้งชื่อใหม่เป็น `cls_v52` เอง → ดูชื่อโฟลเดอร์จริงที่บรรทัดท้ายตอนเทรนเสร็จ
 - ไฟล์ที่ได้: `weights\best.pt` (ตัวที่ใช้) · `confusion_matrix_normalized.png` · `results.png`
 
 ## 7. วัดผลและเทียบกับรุ่นเดิม 💻
 
-วัดทั้ง v4 และ v3 ด้วย **test ชุดเดียวกัน** (ของ v4) ถึงจะเทียบกันได้
+วัดทั้ง v5 และ v4 ด้วย **test ชุดเดียวกัน** (ของ v5) ถึงจะเทียบกันได้
 
 ```bat
-python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls-v4\test
-python scripts\eval_cls.py --model runs\classify\cls_v3\weights\best.pt --data datasets\beans-cls-v4\test
+python scripts\eval_cls.py --model runs\classify\cls_v5\weights\best.pt --data datasets\beans-cls-v5\test
+python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls-v5\test
 ```
 
 แยกดูเฉพาะข้อมูลชุดใหม่ (ไฟล์ขึ้นต้น `new_`):
 
 ```bat
-python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls-v4\test --include new_
+python scripts\eval_cls.py --model runs\classify\cls_v5\weights\best.pt --data datasets\beans-cls-v5\test --include new_
 ```
 
 - `eval_cls.py` พิมพ์ความแม่นต่อคลาส + overall + คู่ที่ทายผิดบ่อยสุด
-- **ดีกว่า** → ไปขั้น 8 · **ไม่ดีกว่า** → เพิ่มภาพของคลาสที่อ่อน หรือลองปรับ epochs แล้วกลับไปขั้น 6 (ใช้ `name=cls_v4b` ฯลฯ)
+- **ดีกว่า** → ไปขั้น 8 · **ไม่ดีกว่า** → เพิ่มภาพของคลาสที่อ่อน หรือลองปรับ epochs แล้วกลับไปขั้น 6 (ใช้ `name=cls_v5b` ฯลฯ)
 
 ## 8. แปลงเป็น NCNN 💻
 
 ```bat
-yolo export model=runs\classify\cls_v4\weights\best.pt format=ncnn imgsz=320
+yolo export model=runs\classify\cls_v5\weights\best.pt format=ncnn imgsz=320
 ```
 
 - NCNN = รูปแบบโมเดลที่รันบน CPU ของ Pi ได้เร็ว ไม่ต้องใช้ PyTorch
-- ได้โฟลเดอร์ `runs\classify\cls_v4\weights\best_ncnn_model\` · `imgsz` ต้องตรงกับตอนเทรน
+- ได้โฟลเดอร์ `runs\classify\cls_v5\weights\best_ncnn_model\` · `imgsz` ต้องตรงกับตอนเทรน
 
 ## 9. ส่งไป Pi 💻
 
 ```bat
-scp -r runs\classify\cls_v4\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v4_ncnn_model
-scp -r datasets\beans-cls-v4\test admin@tesa-pi.local:~/tesa/beans-test-v4
+scp -r runs\classify\cls_v5\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v5_ncnn_model
+scp -r datasets\beans-cls-v5\test admin@tesa-pi.local:~/tesa/beans-test-v5
 scp scripts\eval_cls.py admin@tesa-pi.local:~/tesa/
 ```
 
@@ -192,7 +192,7 @@ ssh admin@tesa-pi.local
 tmux attach -t tesa          # ถ้าขึ้น no sessions: tmux new -s tesa
 cd ~/tesa
 source .venv/bin/activate
-python eval_cls.py --model cls_v4_ncnn_model --data beans-test-v4
+python eval_cls.py --model cls_v5_ncnn_model --data beans-test-v5
 ```
 
 - ความแม่นควรใกล้กับขั้น 7 บนคอม (NCNN ไม่ทำให้แม่นลด) · ดู `time per bean` = ความเร็วต่อเม็ดบน Pi
@@ -200,14 +200,14 @@ python eval_cls.py --model cls_v4_ncnn_model --data beans-test-v4
 ## 11. ลองตรวจจับทั้งสายบน Pi 🍓
 
 ```bash
-python detector/detect.py full-test/*.jpg --model cls_v4_ncnn_model --lot TEST-V4
+python detector/detect.py full-test/*.jpg --model cls_v5_ncnn_model --lot TEST-V4
 ```
 
 - `--model` = เลือกโมเดลรอบนี้โดยไม่ต้องแก้โค้ด · ผลอยู่ที่ `results/TEST-V4.json` + `results/*_annotated.jpg`
-- ใช้ v4 เป็นตัวหลักถาวร: แก้ค่าเริ่มต้นใน `detect.py`
+- ใช้ v5 เป็นตัวหลักถาวร: แก้ค่าเริ่มต้นใน `detect.py`
 
 ```bash
-sed -i 's/cls_v3_ncnn_model/cls_v4_ncnn_model/' detector/detect.py
+sed -i 's/cls_v4_ncnn_model/cls_v5_ncnn_model/' detector/detect.py
 grep -n '^MODEL' detector/detect.py
 ```
 
@@ -225,24 +225,24 @@ python mqtt/send.py results/TEST-V4.json
 
 ```bat
 cd C:\tesa-bean-grader
-mkdir versions\v4
-copy C:\tesa-pi\runs\classify\cls_v4\weights\best.pt versions\v4\cls_v4.pt
-copy C:\tesa-pi\runs\classify\cls_v4\args.yaml versions\v4\
-copy C:\tesa-pi\runs\classify\cls_v4\results.csv versions\v4\
-copy C:\tesa-pi\runs\classify\cls_v4\results.png versions\v4\
-copy C:\tesa-pi\runs\classify\cls_v4\confusion_matrix*.png versions\v4\
+mkdir versions\v5
+copy C:\tesa-pi\runs\classify\cls_v5\weights\best.pt versions\v5\cls_v5.pt
+copy C:\tesa-pi\runs\classify\cls_v5\args.yaml versions\v5\
+copy C:\tesa-pi\runs\classify\cls_v5\results.csv versions\v5\
+copy C:\tesa-pi\runs\classify\cls_v5\results.png versions\v5\
+copy C:\tesa-pi\runs\classify\cls_v5\confusion_matrix*.png versions\v5\
 ```
 
-1. เขียน `versions\v4\README.md` ตามแบบ `versions\v3\README.md` (ข้อมูลที่ใช้, คำสั่ง, ผลขั้น 7 และ 10, ข้อสังเกต)
-2. เพิ่มแถว v4 ในตาราง `versions\README.md` และย้าย ✅ มาที่ v4
+1. เขียน `versions\v5\README.md` ตามแบบ `versions\v4\README.md` (ข้อมูลที่ใช้, คำสั่ง, ผลขั้น 7 และ 10, ข้อสังเกต)
+2. เพิ่มแถว v5 ในตาราง `versions\README.md` และย้าย ✅ มาที่ v5
 3. ถ้าแก้ `crop_beans.py` / `merge_cls.py` บนคอม คัดลอกไปไว้ใน `scripts\` ของ repo ด้วย
 4. ถ้าเปลี่ยนตัวหลัก แก้ `MODEL` ใน `detector\detect.py` ของ repo
 
 ```bat
 git add -A
-git commit -m "Add v4 classifier"
+git commit -m "Add v5 classifier"
 git push
-git tag -a v4 -m "v4: <สรุปสั้น ๆ>"
+git tag -a v5 -m "v5: <สรุปสั้น ๆ>"
 git push --tags
 ```
 
@@ -250,14 +250,14 @@ git push --tags
 
 ## สรุปชื่อไฟล์/โฟลเดอร์ต่อรุ่น
 
-| อะไร | v3 (ปัจจุบัน) | v4 (ถัดไป) |
+| อะไร | v4 (ปัจจุบัน) | v5 (ถัดไป) |
 |---|---|---|
-| dataset รวม | `datasets\beans-cls-v3` | `datasets\beans-cls-v4` |
-| ผลเทรน | `runs\classify\cls_v3\` | `runs\classify\cls_v4\` |
+| dataset รวม | `datasets\beans-cls-v4` | `datasets\beans-cls-v5` |
+| ผลเทรน | `runs\classify\cls_v4\` | `runs\classify\cls_v5\` |
 | โมเดล .pt | `weights\best.pt` | `weights\best.pt` |
 | NCNN บนคอม | `weights\best_ncnn_model\` | `weights\best_ncnn_model\` |
-| NCNN บน Pi | `~/tesa/cls_v3_ncnn_model` | `~/tesa/cls_v4_ncnn_model` |
-| ใน repo | `versions/v3/` | `versions/v4/` |
+| NCNN บน Pi | `~/tesa/cls_v4_ncnn_model` | `~/tesa/cls_v5_ncnn_model` |
+| ใน repo | `versions/v4/` | `versions/v5/` |
 
 ## แก้ปัญหาที่พบบ่อย
 

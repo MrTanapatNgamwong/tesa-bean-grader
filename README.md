@@ -5,7 +5,7 @@
 
 **ขอบเขตของ Pi:** ตรวจจับ + นับ 7 คลาส แล้วส่งจำนวนต่อคลาสให้ server ผ่าน MQTT · การคิดเกรด / หน้าเว็บ อยู่ที่ฝั่ง server
 
-**โมเดลที่ใช้งานอยู่: v3** · ประวัติและผลของทุกรุ่น: [versions/](versions/README.md)
+**โมเดลที่ใช้งานอยู่: v4** · ประวัติและผลของทุกรุ่น: [versions/](versions/README.md)
 
 > 🚀 **เพิ่งเริ่ม? อ่าน [คู่มือเริ่มต้นใช้งานตั้งแต่ศูนย์](docs/GETTING_STARTED.md)** · ติดตั้งคอม + Pi → เทรน → export → รันบน Pi ทีละขั้น
 
@@ -28,15 +28,15 @@
 Server (คิดเกรด + แสดงผล)
 ```
 
-## ผลลัพธ์หลัก (v3)
+## ผลลัพธ์หลัก (v4)
 
 | เรื่อง | ค่า |
 |---|---|
-| โมเดลหลัก | `cls_v3` · YOLO26n-cls · 60 epochs · imgsz 320 · เทรนด้วย `beans-cls-v3` (ROBUSTA + NIA) |
-| ความแม่น test ROBUSTA / NIA | 0.787 / 0.959 (cls_v2: 0.795 / 0.693) |
-| คู่ที่ยังสับสน | good ↔ full_black · shell ↔ broken |
-| ความเร็วบน Pi 5 (NCNN) | ~5–12 ms/เม็ด |
-| NCNN บน Pi เทียบ PyTorch บนคอม | ความแม่นเท่ากัน (ทดสอบกับ cls_v2: 0.795 = 0.795) |
+| โมเดลหลัก | `cls_v4` · YOLO26n-cls · 60 epochs · imgsz 320 · เทรนด้วย `beans-cls-v4` (ROBUSTA + NIA + CFE) |
+| **ความแม่น test ROBUSTA + NIA** | **0.909** (379/417) · ROBUSTA 0.803 · NIA 0.955 |
+| test CFE | 0.995 (v3 ได้ 0.410 → v3 พังกับภาพแบบใหม่) |
+| คู่ที่ยังสับสน | shell ↔ broken · broken → parchment · good ↔ full_black |
+| ความเร็วบน Pi 5 (NCNN) | ~12 ms/เม็ด · ความแม่นบน Pi = บนคอมทุกเม็ด |
 | ตัดเมล็ด (OpenCV) | 2 ms/ภาพ · นับตรง label 52/52 เม็ด (พื้นสีอ่อน) |
 
 รายละเอียดและเทียบทุกรุ่น: [versions/README.md](versions/README.md)
@@ -48,13 +48,13 @@ detector/
   detect.py        ภาพ → ตัดเมล็ด → classify → นับต่อคลาส → JSON + ภาพวาดกรอบ (รันบน Pi)
 scripts/
   crop_beans.py    ตัดเมล็ดจาก dataset (YOLO bbox) → dataset classification 7 คลาส (--preset robusta|nia)
-  merge_cls.py     รวม ROBUSTA + NIA → datasets/beans-cls-v3 (NIA แบ่งใหม่ตามภาพต้นฉบับ)
+  merge_cls.py     รวมหลาย dataset → datasets/beans-cls-v4 (ชุดที่สำเนาภาพรั่วข้าม split ถูกแบ่งใหม่ตามภาพต้นฉบับ)
   eval_cls.py      วัดความแม่นต่อคลาส (ใช้ได้ทั้ง .pt บนคอม และ NCNN บน Pi)
   eval_cls_pi.py   วัดความแม่น + เวลาต่อเม็ดของโมเดล NCNN บน Pi
 mqtt/
   send.py          อ่าน JSON จาก detect.py → ส่งจำนวน 7 คลาสไป server
   mqtt.example.yaml  ตัวอย่างตั้งค่า broker (คัดลอกเป็น mqtt.yaml แล้วกรอกค่าจริง · mqtt.yaml ห้าม push)
-versions/        โมเดลแต่ละรุ่น + ค่าที่ใช้เทรน + ผลวัด + คำอธิบาย (v1, v2, v3 ✅)
+versions/        โมเดลแต่ละรุ่น + ค่าที่ใช้เทรน + ผลวัด + คำอธิบาย (v1–v3, v4 ✅)
 docs/            เอกสาร: คู่มือเริ่มต้น, setup, เส้นทางการทำงาน, dataset
 ```
 
@@ -100,4 +100,5 @@ python mqtt/send.py results/TEST-ALL.json                  # ส่งผลไ�
 
 - ROBUSTA DATASET (No digkit3) · Renies Workspace · Roboflow Universe · CC BY 4.0
 - coffee-bean-defect · niacubilla · Roboflow Universe · CC BY 4.0
+- OPTIMIZED GREEN CFE BEANS · green-coffee-beans · Roboflow Universe · CC BY 4.0
 - Ultralytics YOLO26 · NCNN (Tencent) · Eclipse Paho MQTT

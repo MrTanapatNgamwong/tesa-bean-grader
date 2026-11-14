@@ -1,4 +1,4 @@
-# v3 · รวม 2 dataset (✅ ใช้งานอยู่)
+# v3 · รวม 2 dataset (เลิกใช้ · แทนด้วย [v4](../v4/))
 
 - **วันที่:** 12 พ.ย. 2569
 - **ข้อมูล:** `datasets/beans-cls-v3` = ROBUSTA + NIA (coffee-bean-defect, niacubilla)

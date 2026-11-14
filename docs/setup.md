@@ -32,11 +32,12 @@ pip install ultralytics ncnn pyyaml paho-mqtt
 ```bat
 python scripts\crop_beans.py
 python scripts\crop_beans.py --preset nia --src datasets/coffee-defect-nia --dst datasets/beans-cls-nia --prefix nia
+python scripts\crop_beans.py --preset cfe --src datasets/green-cfe-bean --dst datasets/beans-cls-cfe --prefix cfe --skip-edge
 python scripts\merge_cls.py
-yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v3 epochs=60 imgsz=320 device=0 name=cls_v3
-python scripts\eval_cls.py --model runs\classify\cls_v3\weights\best.pt --data datasets\beans-cls-v3\test
-yolo export model=runs\classify\cls_v3\weights\best.pt format=ncnn imgsz=320
-scp -r runs\classify\cls_v3\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v3_ncnn_model
+yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v4 epochs=60 imgsz=320 device=0 name=cls_v4
+python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls-v4\test
+yolo export model=runs\classify\cls_v4\weights\best.pt format=ncnn imgsz=320
+scp -r runs\classify\cls_v4\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v4_ncnn_model
 scp -r detector mqtt admin@tesa-pi.local:~/tesa/
 ```
 

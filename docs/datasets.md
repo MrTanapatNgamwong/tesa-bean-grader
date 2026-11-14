@@ -1,6 +1,6 @@
 # Datasets
 
-## 1. ROBUSTA DATASET (No digkit3) · ใช้เทรน (cls_v2, cls_v3)
+## 1. ROBUSTA DATASET (No digkit3) · ใช้เทรน (cls_v2–v4)
 
 - Roboflow Universe · Renies Workspace · CC BY 4.0 · โรบัสต้าดิบ · กล้อง DSLR พื้นขาว
 - 3,219 ภาพ (ต้นฉบับ 438 · train ถูก augment 10 เท่า) · label แบบกรอบ · 16 คลาส มีครบ 7 คลาสของโจทย์
@@ -19,7 +19,7 @@
 
 **ข้อจำกัด:** เมล็ด ~28% ไม่มี label (ประมาณจาก OpenCV) → ไม่เทรน detection ตรง · เมล็ดดีมีแค่ ~11% · Parchment ใน val/test มีน้อย
 
-## 2. coffee-bean-defect (niacubilla) · ใช้เทรนร่วมใน cls_v3
+## 2. coffee-bean-defect (niacubilla) · ใช้เทรนร่วมใน cls_v3–v4
 
 - Roboflow Universe · CC BY 4.0 · 2,520 ภาพ · 640×640 · พื้นผ้าขาว ถ่ายมือถือ · 1–6 ชิ้น/ภาพ
 - 9 คลาส: green, black, broken, husk, fraghusk, immature, foreign, infested, sour
@@ -27,7 +27,21 @@
 - ผลกับ cls_v2 (ไม่เคยเห็น NIA): ตัดเมล็ดตรง 52/52 แต่ทายเมล็ดดีถูก 9/52 → domain shift
 - ข้อมูลรั่ว: ภาพต้นฉบับทุกภาพมี 2 สำเนาอยู่คนละ split → `merge_cls.py` เทรวมแล้วแบ่งใหม่ 80/10/10 ตามภาพต้นฉบับ
 
-## 3. beans-cls-v3 · ชุดที่ใช้เทรน cls_v3
+## 3. OPTIMIZED GREEN CFE BEANS (green-coffee-beans) · ใช้เทรนร่วมใน cls_v4
 
-- `crop_beans.py` (ROBUSTA → `beans-cls` · NIA `--preset nia` → `beans-cls-nia`) → `merge_cls.py` → `datasets/beans-cls-v3`
-- ROBUSTA ใช้การแบ่งเดิม · ไฟล์จาก NIA ขึ้นต้นด้วย `nia_` (ใช้แยกวัดผลด้วย `eval_cls.py --include/--exclude nia_`)
+- Roboflow Universe · `green-coffee-beans/optimized-green-cfe-beans` v2 · CC BY 4.0 · 4,992 ภาพ 416×416 · พื้นขาว ถ่ายมือถือ · 1 คลาสต่อภาพ
+- 4 คลาส: normal → good · black → full_black · broken → broken · cherry → husk (preset `cfe`)
+- label ~14% เป็น polygon · เมล็ดริมภาพถูกตัด → ใช้ `--skip-edge` · สำเนาภาพรั่วข้าม split → แบ่งใหม่ใน `merge_cls.py`
+- รายละเอียด: [versions/v4](../versions/v4/README.md)
+
+## 4. Green Coffee Bean (Cor Jesu College) · ไม่ใช้
+
+- Roboflow Universe · `cor-jesu-college-lvftr/green-coffee-bean` v1 · CC BY 4.0
+- ภาพขาวดำ (Grayscale + adaptive equalization) · คลาสเป็นระดับคุณภาพ Good / Medium / Low · label เป็น polygon · ตัดจากวิดีโอ
+- ไม่ใช้เพราะคลาสแปลงเป็น 7 คลาสไม่ได้ และภาพไม่มีสี (หลายคลาสของเราแยกด้วยสี)
+
+## 5. ชุดที่ใช้เทรนจริง
+
+- **beans-cls-v3** (cls_v3): ROBUSTA + NIA
+- **beans-cls-v4** (cls_v4): ROBUSTA + NIA + CFE · `crop_beans.py` ทีละชุด → `merge_cls.py` (ROBUSTA ใช้การแบ่งเดิม · NIA + CFE แบ่งใหม่ 80/10/10 ตามภาพต้นฉบับ)
+- ไฟล์จาก NIA ขึ้นต้น `nia_` · CFE ขึ้นต้น `cfe_` (ใช้แยกวัดผลด้วย `eval_cls.py --include`)
