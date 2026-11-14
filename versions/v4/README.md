@@ -1,4 +1,4 @@
-# v4 · เพิ่ม dataset ที่ 3 (✅ ใช้งานอยู่)
+# v4 · เพิ่ม dataset ที่ 3 (เลิกใช้ · แทนด้วย [v5](../v5/))
 
 - **วันที่:** 14 พ.ย. 2569
 - **ข้อมูล:** `datasets/beans-cls-v4` = ROBUSTA + NIA (ชุดเดียวกับ v3) + **OPTIMIZED GREEN CFE BEANS** (ใหม่)

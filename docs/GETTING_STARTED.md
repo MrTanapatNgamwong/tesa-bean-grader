@@ -41,7 +41,7 @@
 - **คอม** ใช้เทรน (เร็วเพราะมี GPU) · **Pi** ใช้รันจริง (ไม่มี GPU ใช้ CPU ล้วน)
 - โมเดลเทรนเป็น `.pt` (PyTorch) แล้วแปลงเป็น **NCNN** เพื่อให้รันบน Pi ได้เร็วและเบา
 
-**มีโมเดลแล้วไม่อยากเทรนเอง?** repo นี้มี `versions/v4/cls_v4.pt` ให้แล้ว ข้ามข้อ 4 ไปข้อ 5 ได้ (แต่ยังต้องทำข้อ 2 เพื่อ export)
+**มีโมเดลแล้วไม่อยากเทรนเอง?** repo นี้มี `versions/v5/cls_v5.pt` ให้แล้ว ข้ามข้อ 4 ไปข้อ 5 ได้ (แต่ยังต้องทำข้อ 2 เพื่อ export)
 
 ---
 
@@ -157,6 +157,7 @@ dir datasets\robusta-digkit3
 
 4. ทำแบบเดียวกันกับ **coffee-bean-defect** (niacubilla) → แตกไปที่ `C:\tesa-pi\datasets\coffee-defect-nia`
 5. และ **OPTIMIZED GREEN CFE BEANS** (green-coffee-beans) → แตกไปที่ `C:\tesa-pi\datasets\green-cfe-bean`
+6. ชุดภาพมือถือบนพื้นไม้ (`phone_crops`) อยู่ที่ `D:\tesa-bean-grader-main\datasets\phone_crops` (ไม่ได้อยู่บน Roboflow)
 
 รายละเอียด dataset: [datasets.md](datasets.md)
 
@@ -164,7 +165,7 @@ dir datasets\robusta-digkit3
 
 ## 4. เตรียมข้อมูลและเทรนโมเดล
 
-> ข้ามได้ถ้าใช้ `versions/v4/cls_v4.pt` ที่มีให้
+> ข้ามได้ถ้าใช้ `versions/v5/cls_v5.pt` ที่มีให้
 
 ### 4.1 ตัดเมล็ดเป็นภาพเดี่ยว 💻 `(.venv)`
 
@@ -175,43 +176,45 @@ cd C:\tesa-pi
 python scripts\crop_beans.py
 python scripts\crop_beans.py --preset nia --src datasets/coffee-defect-nia --dst datasets/beans-cls-nia --prefix nia
 python scripts\crop_beans.py --preset cfe --src datasets/green-cfe-bean --dst datasets/beans-cls-cfe --prefix cfe --skip-edge
+python scripts\phone_to_cls.py --src D:/tesa-bean-grader-main/datasets/phone_crops --dst datasets/beans-cls-phone
 python scripts\merge_cls.py
 ```
 
-- บรรทัด 1–3: ROBUSTA → `datasets\beans-cls` · NIA → `datasets\beans-cls-nia` · CFE → `datasets\beans-cls-cfe` (`--preset` = ตารางแปลงชื่อคลาสของแต่ละ dataset · `--skip-edge` = ข้ามเมล็ดที่ถูกขอบภาพตัด)
-- `merge_cls.py` รวมทั้งสามชุดเป็น `datasets\beans-cls-v4\{train,val,test}\{7 คลาส}` · NIA และ CFE ถูกแบ่งใหม่ตามภาพต้นฉบับ เพราะสำเนาภาพเดียวกันอยู่คนละ split
+- บรรทัด 1–4: ROBUSTA → `datasets\beans-cls` · NIA → `datasets\beans-cls-nia` · CFE → `datasets\beans-cls-cfe` · PHONE → `datasets\beans-cls-phone` (`--preset` = ตารางแปลงชื่อคลาสของแต่ละ dataset · `--skip-edge` = ข้ามเมล็ดที่ถูกขอบภาพตัด)
+- `merge_cls.py` รวมทั้งสี่ชุดเป็น `datasets\beans-cls-v5\{train,val,test}\{7 คลาส}` · NIA, CFE และ PHONE ถูกแบ่งใหม่ตามภาพต้นฉบับ เพราะสำเนาภาพเดียวกันอยู่คนละ split
 
 ### 4.2 เทรน classifier 💻 `(.venv)`
 
 ```bat
-yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v4 epochs=60 imgsz=320 device=0 name=cls_v4
+yolo classify train model=yolo26n-cls.pt data=datasets/beans-cls-v5 epochs=60 imgsz=320 device=0 name=cls_v5
 ```
 
 - `classify` = จำแนกทั้งภาพ (ภาพละ 1 เมล็ด → 1 คลาส)
 - `yolo26n-cls.pt` = โมเดลตั้งต้นขนาดเล็กสุด ดาวน์โหลดอัตโนมัติ
 - `epochs=60` จำนวนรอบ · `imgsz=320` ขนาดภาพ · `device=0` ใช้ GPU ตัวแรก
-- ผลอยู่ที่ `runs\classify\cls_v4\` (โมเดล `weights\best.pt` · ดู `confusion_matrix_normalized.png`)
+- ผลอยู่ที่ `runs\classify\cls_v5\` (โมเดล `weights\best.pt` · ดู `confusion_matrix_normalized.png`)
 
 ใช้เวลาไม่กี่นาทีบน RTX 4060
 
 ### 4.3 วัดผลกับชุด test 💻 `(.venv)`
 
 ```bat
-python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls\test
-python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls-v4\test --include nia_
-python scripts\eval_cls.py --model runs\classify\cls_v4\weights\best.pt --data datasets\beans-cls-v4\test --include cfe_
+python scripts\eval_cls.py --model runs\classify\cls_v5\weights\best.pt --data datasets\beans-cls\test
+python scripts\eval_cls.py --model runs\classify\cls_v5\weights\best.pt --data datasets\beans-cls-v5\test --include nia_
+python scripts\eval_cls.py --model runs\classify\cls_v5\weights\best.pt --data datasets\beans-cls-v5\test --include cfe_
+python scripts\eval_cls.py --model runs\classify\cls_v5\weights\best.pt --data datasets\beans-cls-v5\test --include phone_
 ```
 
 - `eval_cls.py` = วัดความแม่นต่อคลาส · `beans-cls\test` = ROBUSTA · `--include nia_` / `--include cfe_` = เฉพาะ NIA / CFE
-- ผลที่เราได้ (v4): ROBUSTA 0.803 · NIA 0.955 · CFE 0.995
+- ผลที่เราได้ (v5): ROBUSTA 0.819 · NIA 0.955 · CFE 0.995 · PHONE 0.925
 
 ### 4.4 แปลงเป็น NCNN 💻 `(.venv)`
 
 ```bat
-yolo export model=runs\classify\cls_v4\weights\best.pt format=ncnn imgsz=320
+yolo export model=runs\classify\cls_v5\weights\best.pt format=ncnn imgsz=320
 ```
 
-(ใช้โมเดลใน repo: แทน path ด้วย `versions\v4\cls_v4.pt`)
+(ใช้โมเดลใน repo: แทน path ด้วย `versions\v5\cls_v5.pt`)
 
 ได้โฟลเดอร์ `best_ncnn_model` ข้างไฟล์ `.pt` · `imgsz` ต้องตรงกับตอนเทรน
 
@@ -274,16 +277,16 @@ source .venv/bin/activate
 
 ```bat
 cd C:\tesa-pi
-scp -r runs\classify\cls_v4\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v4_ncnn_model
+scp -r runs\classify\cls_v5\weights\best_ncnn_model admin@tesa-pi.local:~/tesa/cls_v5_ncnn_model
 scp -r detector admin@tesa-pi.local:~/tesa/
 scp scripts\eval_cls_pi.py admin@tesa-pi.local:~/tesa/
-scp -r datasets\beans-cls-v4\test admin@tesa-pi.local:~/tesa/beans-test
+scp -r datasets\beans-cls-v5\test admin@tesa-pi.local:~/tesa/beans-test
 scp -r datasets\robusta-digkit3\test\images admin@tesa-pi.local:~/tesa/full-test
 ```
 
 > ⚠️ ชื่อโฟลเดอร์โมเดลบน Pi **ต้องลงท้ายด้วย `_ncnn_model`** ไม่งั้น Ultralytics ไม่รู้จัก (error: `is not a supported model format`)
 
-เช็กบน 🍓: `ls ~/tesa` ต้องเห็น `cls_v4_ncnn_model`, `detector`, `beans-test`, `full-test`
+เช็กบน 🍓: `ls ~/tesa` ต้องเห็น `cls_v5_ncnn_model`, `detector`, `beans-test`, `full-test`
 
 ---
 
