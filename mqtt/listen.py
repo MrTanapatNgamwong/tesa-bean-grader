@@ -47,6 +47,12 @@ def build_tls(cfg):
     return str(ca if Path(ca).is_absolute() else HERE / ca) if ca else ""
 
 
+def on_connect_fail(client, userdata):
+    cfg = userdata["cfg"]
+    print(f"⏳ ต่อ {cfg['host']}:{cfg.get('port', 1883)} ไม่ได้ · จะลองใหม่อัตโนมัติ "
+          f"(เช็ก: Pi กับ server อยู่วงเดียวกันไหม · broker เปิดอยู่ไหม · nc -zv {cfg['host']} {cfg.get('port', 1883)})")
+
+
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code.is_failure:
         print(f"❌ ต่อ broker ไม่สำเร็จ: {reason_code}")
@@ -147,14 +153,16 @@ def main():
     if tls is not None:
         client.tls_set(ca_certs=tls or None)
     client.on_connect = on_connect
+    client.on_connect_fail = on_connect_fail
     client.on_message = on_message
     client.reconnect_delay_set(min_delay=1, max_delay=10)  # หลุดแล้วต่อใหม่เอง
 
     threading.Thread(target=worker, args=(model, class_names, cfg, client), daemon=True).start()
     print(f"เชื่อมต่อ {cfg['host']}:{cfg.get('port', 1883)} ...")
-    client.connect(cfg["host"], cfg.get("port", 1883), keepalive=30)
+    # ต่อแบบไม่หยุดโปรแกรมถ้าต่อไม่ติด · ลองใหม่เองทุก 1–10 วินาทีจนกว่า broker จะพร้อม
+    client.connect_async(cfg["host"], cfg.get("port", 1883), keepalive=30)
     try:
-        client.loop_forever()
+        client.loop_forever(retry_first_connection=True)
     except KeyboardInterrupt:
         print("\nหยุดแล้ว")
 
