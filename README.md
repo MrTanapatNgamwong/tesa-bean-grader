@@ -55,6 +55,8 @@ scripts/
   eval_cls_pi.py   วัดความแม่น + เวลาต่อเม็ดของโมเดล NCNN บน Pi
 mqtt/
   send.py          อ่าน JSON จาก detect.py → ส่งจำนวน 7 คลาสไป server
+  listen.py        รอรับภาพจาก server (coffee/<LOT_ID>/image) → ตรวจจับ + นับ → ส่งผลกลับอัตโนมัติ
+  test_server_send.py  จำลองฝั่ง server: ส่งภาพแล้วรอผล (ใช้ทดสอบ)
   mqtt.example.yaml  ตัวอย่างตั้งค่า broker (คัดลอกเป็น mqtt.yaml แล้วกรอกค่าจริง · mqtt.yaml ห้าม push)
 versions/        โมเดลแต่ละรุ่น + ค่าที่ใช้เทรน + ผลวัด + คำอธิบาย (v1–v4, v5 ✅)
 docs/            เอกสาร: คู่มือเริ่มต้น, setup, เส้นทางการทำงาน, dataset
