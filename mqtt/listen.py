@@ -66,7 +66,8 @@ def on_message(client, userdata, msg):
         lot_id = safe_lot_id(topic_lot)
         err = f"payload ไม่ถูกต้อง: {type(e).__name__}: {e}"
         print(f"❌ {lot_id}: {err}")
-        client.publish(f"coffee/{lot_id}/ai_error", json.dumps({"error": err}), qos=userdata["cfg"].get("qos", 1))
+        client.publish(f"coffee/{lot_id}/ai_error", json.dumps({"error": err}), qos=userdata["cfg"].get("qos", 1),
+                       retain=userdata["cfg"].get("retain", False))
         return
     INBOX.mkdir(exist_ok=True)
     path = INBOX / f"{lot_id}_{datetime.now():%Y%m%d-%H%M%S-%f}.jpg"
@@ -112,7 +113,8 @@ def worker(model, class_names, cfg, client):
         except Exception as e:  # ภาพเสีย ฯลฯ → แจ้ง server แล้วรอภาพถัดไป
             err = f"{type(e).__name__}: {e}"
             print(f"❌ {lot_id}: {err}")
-            client.publish(f"coffee/{lot_id}/ai_error", json.dumps({"error": err}), qos=cfg.get("qos", 1))
+            client.publish(f"coffee/{lot_id}/ai_error", json.dumps({"error": err}), qos=cfg.get("qos", 1),
+                           retain=cfg.get("retain", False))
         finally:
             jobs.task_done()
 

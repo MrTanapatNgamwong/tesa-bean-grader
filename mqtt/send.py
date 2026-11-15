@@ -54,7 +54,7 @@ def send_result(result, cfg=None):
     old_timeout = socket.getdefaulttimeout()
     socket.setdefaulttimeout(cfg.get("timeout_s", 5))
     try:
-        publish.single(topic, payload, qos=cfg.get("qos", 1), hostname=cfg["host"],
+        publish.single(topic, payload, qos=cfg.get("qos", 1), retain=cfg.get("retain", False), hostname=cfg["host"],
                        port=cfg.get("port", 1883), client_id=cfg.get("client_id", ""),
                        auth=auth, tls=tls)
         return True, f"ส่งแล้ว → {cfg['host']}:{cfg.get('port', 1883)} · {topic} · {payload}"

@@ -17,6 +17,7 @@ ca_cert: null                   # ทีม server ใช้ tls_set() แบบ
 topic: coffee/{lot_id}/ai_results
 image_topic: coffee/+/image     # ขาเข้า: server ส่งภาพมาที่ coffee/<LOT_ID>/image (ใช้โดย listen.py)
 qos: 1
+retain: true                    # broker จำผลล่าสุดของแต่ละ LOT ไว้ → server ที่ subscribe ทีหลังก็ยังได้ผล
 client_id: tesa-pi-grader       # ต้องไม่ซ้ำกับอุปกรณ์อื่นที่ต่อ broker เดียวกัน
 timeout_s: 10
 
