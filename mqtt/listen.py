@@ -1,7 +1,10 @@
 """
 listen.py — รอรับภาพจาก server ผ่าน MQTT → ตรวจจับ + นับ (detect.py) → ส่งผลกลับ (send.py)
 
-  รับ  : coffee/<LOT_ID>/image        payload = ไฟล์ภาพ JPEG/PNG ทั้งไฟล์ (bytes)
+  รับ  : coffee/<LOT_ID>/image        payload รับได้ 2 แบบ
+            1) JSON {"lot_id": "...", "image": "<base64>"}  (image เป็น data URL "data:image/jpeg;base64,..." ก็ได้)
+            2) ไฟล์ภาพ JPEG/PNG ทั้งไฟล์ (bytes)
+            lot_id ใช้ค่าใน JSON ก่อน ถ้าไม่มีใช้จาก topic
   ส่ง  : coffee/<LOT_ID>/ai_results   payload = {"good":..,"shell":..,"full_black":..,"broken":..,
                                                  "parchment":..,"hull_husk":..,"immature":..}
   error: coffee/<LOT_ID>/ai_error     payload = {"error": "..."}
@@ -14,6 +17,7 @@ listen.py — รอรับภาพจาก server ผ่าน MQTT → ต
 หยุด: Ctrl + C
 """
 import argparse
+import base64
 import json
 import queue
 import re
@@ -55,12 +59,33 @@ def on_connect(client, userdata, flags, reason_code, properties):
 def on_message(client, userdata, msg):
     # ทำแค่บันทึกไฟล์แล้วเข้าคิว ไม่ประมวลผลในนี้ (ไม่งั้นการเชื่อมต่อจะค้างระหว่างรันโมเดล)
     m = re.fullmatch(userdata["topic_regex"], msg.topic)
-    lot_id = safe_lot_id(m.group(1) if m else "LOT")
+    topic_lot = m.group(1) if m else "LOT"
+    try:
+        lot_id, img_bytes = parse_payload(msg.payload, topic_lot)
+    except Exception as e:  # JSON/base64 เสีย → แจ้ง server แล้วรอข้อความถัดไป
+        lot_id = safe_lot_id(topic_lot)
+        err = f"payload ไม่ถูกต้อง: {type(e).__name__}: {e}"
+        print(f"❌ {lot_id}: {err}")
+        client.publish(f"coffee/{lot_id}/ai_error", json.dumps({"error": err}), qos=userdata["cfg"].get("qos", 1))
+        return
     INBOX.mkdir(exist_ok=True)
     path = INBOX / f"{lot_id}_{datetime.now():%Y%m%d-%H%M%S-%f}.jpg"
-    path.write_bytes(msg.payload)
-    print(f"📥 {msg.topic} · {len(msg.payload) / 1024:.0f} KB → {path}")
+    path.write_bytes(img_bytes)
+    print(f"📥 {msg.topic} · lot {lot_id} · {len(img_bytes) / 1024:.0f} KB → {path}")
     jobs.put((lot_id, path))
+
+
+def parse_payload(payload, topic_lot):
+    """คืน (lot_id, bytes ของภาพ) · รองรับ JSON+base64 (สเปกทีม server) และไฟล์ภาพตรง ๆ"""
+    if payload[:1] in (b"{", b"["):
+        data = json.loads(payload.decode("utf-8"))
+        img_b64 = data.get("image", "")
+        if "," in img_b64:  # data URL: "data:image/jpeg;base64,<ข้อมูล>"
+            img_b64 = img_b64.split(",", 1)[1]
+        if not img_b64:
+            raise ValueError('ไม่มีฟิลด์ "image"')
+        return safe_lot_id(data.get("lot_id") or topic_lot), base64.b64decode(img_b64)
+    return safe_lot_id(topic_lot), payload
 
 
 def worker(model, class_names, cfg, client):

@@ -3,11 +3,13 @@ test_server_send.py — จำลองฝั่ง server: ส่งภาพ�
 
     python mqtt/test_server_send.py ภาพ.jpg --lot LOT01
 
-ส่ง  : coffee/LOT01/image        (ไฟล์ภาพทั้งไฟล์)
+ส่ง  : coffee/LOT01/image        JSON {"lot_id", "image": base64} (ใส่ --raw = ส่งไฟล์ภาพตรง ๆ)
 รอรับ: coffee/LOT01/ai_results   และ coffee/LOT01/ai_error
 ใช้ broker จาก mqtt/mqtt.yaml
 """
 import argparse
+import base64
+import json
 import sys
 import time
 from pathlib import Path
@@ -23,6 +25,7 @@ def main():
     ap.add_argument("image", type=Path)
     ap.add_argument("--lot", default="LOT01")
     ap.add_argument("--timeout", type=float, default=60)
+    ap.add_argument("--raw", action="store_true", help="ส่งไฟล์ภาพตรง ๆ แทน JSON+base64")
     args = ap.parse_args()
     cfg = load_mqtt_config()
     img_topic = cfg.get("image_topic", "coffee/+/image").replace("+", args.lot)
@@ -31,6 +34,8 @@ def main():
     def on_connect(c, u, f, rc, p):
         c.subscribe([(f"coffee/{args.lot}/ai_results", 1), (f"coffee/{args.lot}/ai_error", 1)])
         data = args.image.read_bytes()
+        if not args.raw:  # รูปแบบเดียวกับทีม server: JSON {"lot_id", "image": base64}
+            data = json.dumps({"lot_id": args.lot, "image": base64.b64encode(data).decode()}).encode()
         c.publish(img_topic, data, qos=1)
         got["t0"] = time.perf_counter()
         print(f"📤 ส่ง {args.image.name} ({len(data) / 1024:.0f} KB) → {img_topic}")
