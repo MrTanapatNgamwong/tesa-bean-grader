@@ -4,7 +4,7 @@
 - **ข้อมูล:** `datasets/beans-cls-v6` = ROBUSTA + NIA + CFE + PHONE (ชุดเดียวกับ v5) + **testsssss** (ใหม่)
 - **ตั้งค่า:** YOLO26n-cls · 60 epochs · imgsz 320 · batch 16 · seed 0 (เหมือน v5 ทุกค่า ต่างกันแค่ข้อมูล · ค่าเต็มดู `args.yaml`) · เทรน ~103 นาที บน RTX 4060
 - **เริ่มจาก:** `yolo26n-cls.pt`
-- **บน Pi:** `cls_v6_ncnn_model`
+- **บน Pi:** `cls_v6_ncnn_model` · PHONE test 250/265 = **0.943** ตรงกับบนคอมทุกเม็ด (v5 เคยต่าง 1 เม็ด) · ~17.7 ms/เม็ด
 - **หมายเหตุการเทรน:** รอบแรกถูกหยุดจากภายนอกที่ epoch 35 แล้ว `resume` ต่อจาก `last.pt` ถึง epoch 60 → `args.yaml` จึงมี `resume:` ติดมา (พารามิเตอร์อื่นเหมือน v5 ทุกค่า)
 
 ## dataset ใหม่: testsssss (rt-pee)
@@ -48,6 +48,8 @@ yolo export model=runs\classify\cls_v6\weights\cls_v6.pt format=ncnn imgsz=320
 | ROBUSTA (127) | **0.819** | 0.795 |
 | **ROBUSTA + NIA (417)** | **0.914** | 0.909 |
 | top1 val (ชุด v6) | — | 0.953 (epoch 60) |
+
+**บน Pi (NCNN):** PHONE 250/265 = **0.943** · ต่างจากบนคอม **0 เม็ด** · ~17.7 ms/เม็ด · ต่อคลาสและรูปแบบที่ทายผิดตรงกับบนคอมทั้งหมด
 
 ```bat
 python scripts\eval_cls.py --model runs\classify\cls_v6\weights\cls_v6.pt --data datasets\beans-cls\test
