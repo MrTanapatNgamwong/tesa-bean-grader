@@ -5,7 +5,7 @@
 
 **ขอบเขตของ Pi:** ตรวจจับ + นับ 7 คลาส แล้วส่งจำนวนต่อคลาสให้ server ผ่าน MQTT · การคิดเกรด / หน้าเว็บ อยู่ที่ฝั่ง server
 
-**โมเดลที่ใช้งานอยู่: v5** · ประวัติและผลของทุกรุ่น: [versions/](versions/README.md)
+**โมเดลที่ใช้งานอยู่: v6** · ประวัติและผลของทุกรุ่น: [versions/](versions/README.md)
 
 > 🚀 **เพิ่งเริ่ม? อ่าน [คู่มือเริ่มต้นใช้งานตั้งแต่ศูนย์](docs/GETTING_STARTED.md)** · ติดตั้งคอม + Pi → เทรน → export → รันบน Pi ทีละขั้น
 
@@ -28,15 +28,16 @@
 Server (คิดเกรด + แสดงผล)
 ```
 
-## ผลลัพธ์หลัก (v5)
+## ผลลัพธ์หลัก (v6)
 
 | เรื่อง | ค่า |
 |---|---|
-| โมเดลหลัก | `cls_v5` · YOLO26n-cls · 60 epochs · imgsz 320 · เทรนด้วย `beans-cls-v5` (ROBUSTA + NIA + CFE + PHONE) |
-| **ความแม่น test ROBUSTA + NIA** | **0.914** (381/417) · ROBUSTA 0.819 · NIA 0.955 |
-| **test PHONE (ภาพมือถือบนพื้นไม้)** | **0.925** (v4 ได้ 0.581) |
-| test CFE | 0.995 |
-| จุดอ่อน | เมล็ดเสียบนพื้นไม้มักถูกทายเป็น husk · shell ↔ broken · broken → parchment |
+| โมเดลหลัก | `cls_v6` · YOLO26n-cls · 60 epochs · imgsz 320 · เทรนด้วย `beans-cls-v6` (ROBUSTA + NIA + CFE + PHONE + testsssss) |
+| **ความแม่น test ROBUSTA + NIA** | **0.909** (379/417) · ROBUSTA 0.795 · NIA 0.959 (v5 ได้ 0.914) |
+| **test PHONE (ภาพมือถือบนพื้นไม้)** | **0.943** (v5 ได้ 0.925) |
+| **test testsssss** | **0.890** (v5 ได้ 0.251) |
+| test CFE | 0.994 |
+| จุดอ่อน | เมล็ดเสียบนพื้นไม้มักถูกทายเป็น husk · shell / parchment / immature บนภาพ ROBUSTA ยังไม่ดีขึ้น (ข้อมูลใหม่ช่วยเฉพาะโดเมนตัวเอง) |
 | ความเร็วบน Pi 5 (NCNN) | ~12–18 ms/เม็ด · ความแม่นบน Pi ≈ บนคอม (ต่าง ≤ 1 เม็ด) |
 | ตัดเมล็ด (OpenCV) | 2 ms/ภาพ · ใช้ได้กับพื้นสีอ่อนเท่านั้น |
 
@@ -50,7 +51,7 @@ detector/
 scripts/
   crop_beans.py    ตัดเมล็ดจาก dataset (YOLO bbox) → dataset classification 7 คลาส (--preset robusta|nia)
   phone_to_cls.py  แปลงภาพเมล็ดที่ตัดแล้ว + labels.csv (ชุด phone) → dataset classification
-  merge_cls.py     รวมหลาย dataset → datasets/beans-cls-v5 (ชุดที่สำเนาภาพรั่วข้าม split ถูกแบ่งใหม่ตามภาพต้นฉบับ)
+  merge_cls.py     รวมหลาย dataset → datasets/beans-cls-v6 (ชุดที่สำเนาภาพรั่วข้าม split ถูกแบ่งใหม่ตามภาพต้นฉบับ)
   eval_cls.py      วัดความแม่นต่อคลาส (ใช้ได้ทั้ง .pt บนคอม และ NCNN บน Pi)
   eval_cls_pi.py   วัดความแม่น + เวลาต่อเม็ดของโมเดล NCNN บน Pi
 mqtt/
@@ -58,7 +59,7 @@ mqtt/
   listen.py        รอรับภาพจาก server (coffee/<LOT_ID>/image) → ตรวจจับ + นับ → ส่งผลกลับอัตโนมัติ
   test_server_send.py  จำลองฝั่ง server: ส่งภาพแล้วรอผล (ใช้ทดสอบ)
   mqtt.example.yaml  ตัวอย่างตั้งค่า broker (คัดลอกเป็น mqtt.yaml แล้วกรอกค่าจริง · mqtt.yaml ห้าม push)
-versions/        โมเดลแต่ละรุ่น + ค่าที่ใช้เทรน + ผลวัด + คำอธิบาย (v1–v4, v5 ✅)
+versions/        โมเดลแต่ละรุ่น + ค่าที่ใช้เทรน + ผลวัด + คำอธิบาย (v1–v5, v6 ✅)
 docs/            เอกสาร: คู่มือเริ่มต้น, setup, เส้นทางการทำงาน, dataset
 ```
 

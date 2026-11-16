@@ -27,7 +27,11 @@ PRESETS = {
     },
     "cfe":{       # OPTIMIZED GREEN CFE BEANS · cherry = ผลแห้ง/เปลือกแห้ง → husk
         "normal": "good", "cherry": "husk", "black": "full_black", "broken": "broken",
-    }
+    },
+    "tss": {      # testsssss (rt-pee) · ไม่มี husk
+        "normal": "good", "black": "full_black", "broken": "broken",
+        "immature": "immature", "parchment": "parchment", "shell": "shell",
+    },
 }
 SPLITS = {"train": "train", "valid": "val", "test": "test"}  # ชื่อโฟลเดอร์ต้นทาง → ปลายทาง
 

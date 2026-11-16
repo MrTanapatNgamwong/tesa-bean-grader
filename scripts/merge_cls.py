@@ -14,9 +14,9 @@ import shutil
 from collections import defaultdict
 from pathlib import Path
 
-KEEP_SPLIT = [Path("datasets/beans-cls")]
+KEEP_SPLIT = [Path("datasets/beans-cls"), Path("datasets/beans-cls-tss")]
 RESPLIT = [Path("datasets/beans-cls-nia"), Path("datasets/beans-cls-cfe"), Path("datasets/beans-cls-phone")]
-DST = Path("datasets/beans-cls-v5")
+DST = Path("datasets/beans-cls-v6")
 RATIO = (0.8, 0.1, 0.1)                           # train / val / test
 SEED = 42                                         # ค่าสุ่มคงที่ = รันซ้ำได้ผลเหมือนเดิม
 SPLITS = ["train", "val", "test"]
